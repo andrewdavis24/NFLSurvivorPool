@@ -1,0 +1,53 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id        Int      @id @default(autoincrement())
+  name      String
+  email     String   @unique
+  createdAt DateTime @default(now())
+
+  memberships PoolMember[]
+}
+
+model Pool {
+  id        Int      @id @default(autoincrement())
+  name      String
+  createdAt DateTime @default(now())
+
+  members PoolMember[]
+  picks   Pick[]
+}
+
+model PoolMember {
+  id        Int      @id @default(autoincrement())
+  poolId    Int
+  userId    Int
+  eliminated Boolean  @default(false)
+
+  pool Pool @relation(fields: [poolId], references: [id])
+  user User @relation(fields: [userId], references: [id])
+  picks Pick[]
+
+  @@unique([poolId, userId])
+}
+
+model Pick {
+  id           Int      @id @default(autoincrement())
+  poolId       Int
+  poolMemberId Int
+  week         Int
+  team         String
+  result       String?
+  createdAt    DateTime @default(now())
+
+  pool       Pool       @relation(fields: [poolId], references: [id])
+  poolMember PoolMember @relation(fields: [poolMemberId], references: [id])
+
+  @@unique([poolMemberId, week])
+}
