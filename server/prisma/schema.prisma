@@ -12,42 +12,27 @@ model User {
   email     String   @unique
   createdAt DateTime @default(now())
 
-  memberships PoolMember[]
-}
-
-model Pool {
-  id        Int      @id @default(autoincrement())
-  name      String
-  createdAt DateTime @default(now())
-
-  members PoolMember[]
-  picks   Pick[]
-}
-
-model PoolMember {
-  id        Int      @id @default(autoincrement())
-  poolId    Int
-  userId    Int
-  eliminated Boolean  @default(false)
-
-  pool Pool @relation(fields: [poolId], references: [id])
-  user User @relation(fields: [userId], references: [id])
   picks Pick[]
+}
 
-  @@unique([poolId, userId])
+model Week {
+  id        Int      @id @default(autoincrement())
+  week      Int      @unique
+
+  picks Pick[]
 }
 
 model Pick {
-  id           Int      @id @default(autoincrement())
-  poolId       Int
-  poolMemberId Int
-  week         Int
-  team         String
-  result       String?
-  createdAt    DateTime @default(now())
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  weekId    Int
+  team      String
+  result    String?
+  points    Int      @default(0)
+  createdAt DateTime @default(now())
 
-  pool       Pool       @relation(fields: [poolId], references: [id])
-  poolMember PoolMember @relation(fields: [poolMemberId], references: [id])
+  user User @relation(fields: [userId], references: [id])
+  week Week @relation(fields: [weekId], references: [id])
 
-  @@unique([poolMemberId, week])
+  @@unique([userId, weekId])
 }
