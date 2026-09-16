@@ -5,6 +5,8 @@ const cors = require("cors");
 const prisma = require("./lib/prisma");
 const usersRouter = require("./routes/users");
 const picksRouter = require("./routes/picks");
+const gamesRouter = require("./routes/games");
+const leaderboardRouter = require("./routes/leaderboard");
 
 const app = express();
 
@@ -15,6 +17,8 @@ app.use(express.json());
 
 app.use("/api/users", usersRouter);
 app.use("/api/picks", picksRouter);
+app.use("/api/games", gamesRouter);
+app.use("/api/leaderboard", leaderboardRouter);
 
 app.get("/", (req, res) => {
   res.json({

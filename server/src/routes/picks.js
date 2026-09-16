@@ -13,24 +13,24 @@ router.post("/", async (req, res) => {
   try {
     const { userId, week, team } = req.body;
 
-    // Validate required fields
     if (!userId || !week || !team) {
       return res.status(400).json({
         error: "userId, week, and team are required",
       });
     }
 
-    // Validate NFL team
     if (!NFL_TEAMS.includes(team)) {
       return res.status(400).json({
         error: "Invalid NFL team",
       });
     }
 
-    // Check that the user exists
+    const numericUserId = Number(userId);
+    const numericWeek = Number(week);
+
     const user = await prisma.user.findUnique({
       where: {
-        id: Number(userId),
+        id: numericUserId,
       },
     });
 
@@ -40,38 +40,87 @@ router.post("/", async (req, res) => {
       });
     }
 
-    // Find or create the requested week
-    const weekRecord = await prisma.week.upsert({
+    const weekRecord = await prisma.week.findUnique({
       where: {
-        week: Number(week),
+        week: numericWeek,
       },
-      update: {},
-      create: {
-        week: Number(week),
+      include: {
+        games: true,
       },
     });
 
-    // Check if the user already picked a team this week
+    if (!weekRecord) {
+      return res.status(404).json({
+        error: "Week not found",
+      });
+    }
+
+    if (weekRecord.games.length === 0) {
+      return res.status(400).json({
+        error: "Games have not been synced for this week",
+      });
+    }
+
+    // The first NFL game of the week is the pick deadline.
+    const deadline = weekRecord.games
+      .filter((game) => game.startTime)
+      .sort(
+        (a, b) =>
+          new Date(a.startTime).getTime() -
+          new Date(b.startTime).getTime()
+      )[0]?.startTime;
+
+    if (!deadline) {
+      return res.status(400).json({
+        error: "Pick deadline is not available",
+      });
+    }
+
+    if (new Date() >= new Date(deadline)) {
+      return res.status(400).json({
+        error: "Picks are closed for this week",
+      });
+    }
+
+    // Only teams that actually play this week can be picked.
+    const teamsPlayingThisWeek = new Set();
+
+    for (const game of weekRecord.games) {
+      if (game.homeTeam) {
+        teamsPlayingThisWeek.add(game.homeTeam);
+      }
+
+      if (game.awayTeam) {
+        teamsPlayingThisWeek.add(game.awayTeam);
+      }
+    }
+
+    if (!teamsPlayingThisWeek.has(team)) {
+      return res.status(400).json({
+        error: `${team} does not play this week`,
+      });
+    }
+
     const existingWeekPick = await prisma.pick.findUnique({
       where: {
         userId_weekId: {
-          userId: Number(userId),
+          userId: numericUserId,
           weekId: weekRecord.id,
         },
       },
     });
 
-    if (existingWeekPick) {
-      return res.status(400).json({
-        error: "You have already made a pick for this week",
-      });
-    }
-
-    // Check if the user has already picked this team
+    // If changing an existing pick, make sure the new team
+    // wasn't already used by this user in another week.
     const previousTeamPick = await prisma.pick.findFirst({
       where: {
-        userId: Number(userId),
+        userId: numericUserId,
         team,
+        NOT: existingWeekPick
+          ? {
+              id: existingWeekPick.id,
+            }
+          : undefined,
       },
     });
 
@@ -81,25 +130,45 @@ router.post("/", async (req, res) => {
       });
     }
 
-    // Create the pick
-    const pick = await prisma.pick.create({
-      data: {
-        userId: Number(userId),
-        weekId: weekRecord.id,
-        team,
-      },
-      include: {
-        user: true,
-        week: true,
-      },
-    });
+    let pick;
+
+    if (existingWeekPick) {
+      // Change the existing pick.
+      pick = await prisma.pick.update({
+        where: {
+          id: existingWeekPick.id,
+        },
+        data: {
+          team,
+          result: null,
+          points: 0,
+        },
+        include: {
+          user: true,
+          week: true,
+        },
+      });
+    } else {
+      // Create the first pick for this week.
+      pick = await prisma.pick.create({
+        data: {
+          userId: numericUserId,
+          weekId: weekRecord.id,
+          team,
+        },
+        include: {
+          user: true,
+          week: true,
+        },
+      });
+    }
 
     res.status(201).json(pick);
   } catch (error) {
     console.error(error);
 
     res.status(500).json({
-      error: "Failed to create pick",
+      error: "Failed to save pick",
     });
   }
 });

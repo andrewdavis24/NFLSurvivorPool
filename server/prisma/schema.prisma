@@ -16,10 +16,11 @@ model User {
 }
 
 model Week {
-  id        Int      @id @default(autoincrement())
-  week      Int      @unique
+  id   Int @id @default(autoincrement())
+  week Int @unique
 
   picks Pick[]
+  games Game[]
 }
 
 model Pick {
@@ -35,4 +36,22 @@ model Pick {
   week Week @relation(fields: [weekId], references: [id])
 
   @@unique([userId, weekId])
+}
+
+model Game {
+  id        Int       @id @default(autoincrement())
+  espnId    String    @unique
+  weekId    Int
+  startTime DateTime?
+  homeTeam  String
+  awayTeam  String
+  homeScore Int?
+  awayScore Int?
+  status    String
+  completed Boolean   @default(false)
+  winner    String?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  week Week @relation(fields: [weekId], references: [id])
 }
