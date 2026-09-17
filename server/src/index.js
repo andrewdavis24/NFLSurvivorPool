@@ -7,6 +7,8 @@ const usersRouter = require("./routes/users");
 const picksRouter = require("./routes/picks");
 const gamesRouter = require("./routes/games");
 const leaderboardRouter = require("./routes/leaderboard");
+const { startScheduler } = require("./services/scheduler");
+const authRouter = require("./routes/auth");
 
 const app = express();
 
@@ -19,6 +21,7 @@ app.use("/api/users", usersRouter);
 app.use("/api/picks", picksRouter);
 app.use("/api/games", gamesRouter);
 app.use("/api/leaderboard", leaderboardRouter);
+app.use("/api/auth", authRouter);
 
 app.get("/", (req, res) => {
   res.json({
@@ -52,4 +55,5 @@ app.get("/api/db-test", async (req, res) => {
 
 app.listen(PORT, "0.0.0.0", () => {
   console.log(`Server running on port ${PORT}`);
+  startScheduler();
 });

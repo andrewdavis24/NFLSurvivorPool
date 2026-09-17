@@ -1,3 +1,6 @@
+const {
+  authenticateToken,
+} = require("../middleware/auth");
 const express = require("express");
 const prisma = require("../lib/prisma");
 
@@ -9,9 +12,10 @@ const NFL_TEAMS = [
 ];
 
 // POST /api/picks
-router.post("/", async (req, res) => {
+router.post("/", authenticateToken, async (req, res) => {
   try {
-    const { userId, week, team } = req.body;
+    const { week, team } = req.body;
+    const userId = req.user.userId;
 
     if (!userId || !week || !team) {
       return res.status(400).json({
@@ -175,9 +179,12 @@ router.post("/", async (req, res) => {
 
 
 // GET /api/picks/:userId
-router.get("/:userId", async (req, res) => {
+router.get(
+  "/me",
+  authenticateToken,
+  async (req, res) => {
   try {
-    const userId = Number(req.params.userId);
+    const userId = req.user.userId;
 
     const picks = await prisma.pick.findMany({
       where: {

@@ -1,10 +1,63 @@
 const express = require("express");
 const prisma = require("../lib/prisma");
 const { syncNFLGames } = require("../services/gameSync");
+const { getCurrentNFLWeek } = require("../services/scheduler");
 
 const router = express.Router();
 
-// POST /api/games/sync/:week
+/*
+ * Get the current NFL week and make sure
+ * the games are synced.
+ */
+router.get("/current-week", async (req, res) => {
+  try {
+    const currentWeek = await getCurrentNFLWeek();
+
+    if (!currentWeek) {
+      return res.status(404).json({
+        error: "Current NFL week could not be determined",
+      });
+    }
+
+    await syncNFLGames(currentWeek);
+
+    const weekRecord = await prisma.week.findUnique({
+      where: {
+        week: currentWeek,
+      },
+    });
+
+    if (!weekRecord) {
+      return res.status(404).json({
+        error: "Current week was not found",
+      });
+    }
+
+    const games = await prisma.game.findMany({
+      where: {
+        weekId: weekRecord.id,
+      },
+      orderBy: {
+        startTime: "asc",
+      },
+    });
+
+    res.json({
+      week: currentWeek,
+      games,
+    });
+  } catch (error) {
+    console.error(error);
+
+    res.status(500).json({
+      error: "Failed to determine current NFL week",
+    });
+  }
+});
+
+/*
+ * Manually sync a specific NFL week.
+ */
 router.post("/sync/:week", async (req, res) => {
   try {
     const week = Number(req.params.week);
@@ -31,7 +84,9 @@ router.post("/sync/:week", async (req, res) => {
   }
 });
 
-// GET /api/games/:week
+/*
+ * Get games for a specific week.
+ */
 router.get("/:week", async (req, res) => {
   try {
     const week = Number(req.params.week);
@@ -57,7 +112,7 @@ router.get("/:week", async (req, res) => {
         weekId: weekRecord.id,
       },
       orderBy: {
-        id: "asc",
+        startTime: "asc",
       },
     });
 
@@ -71,7 +126,9 @@ router.get("/:week", async (req, res) => {
   }
 });
 
-// POST /api/games/auto-pick/:week
+/*
+ * Automatically assign picks after the deadline.
+ */
 router.post("/auto-pick/:week", async (req, res) => {
   try {
     const week = Number(req.params.week);

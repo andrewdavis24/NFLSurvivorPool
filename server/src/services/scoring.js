@@ -14,6 +14,7 @@ async function scoreWeek(week) {
   const picks = await prisma.pick.findMany({
     where: {
       weekId: weekRecord.id,
+      result: null,
     },
   });
 

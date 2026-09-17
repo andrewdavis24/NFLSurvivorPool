@@ -7,10 +7,10 @@ datasource db {
 }
 
 model User {
-  id        Int      @id @default(autoincrement())
-  name      String
-  email     String   @unique
-  createdAt DateTime @default(now())
+  id           Int      @id @default(autoincrement())
+  name         String   @unique
+  passwordHash String?
+  createdAt    DateTime @default(now())
 
   picks Pick[]
 }

@@ -108,24 +108,10 @@ async function autoAssignPicks(week) {
       }
     }
 
-    const teamsAlreadyPickedThisWeek = await prisma.pick.findMany({
-      where: {
-        weekId: weekRecord.id,
-      },
-      select: {
-        team: true,
-      },
-    });
-
-    const usedThisWeek = new Set(
-      teamsAlreadyPickedThisWeek.map((pick) => pick.team)
-    );
-
     const availableTeams = NFL_TEAMS.filter(
       (team) =>
         teamsPlayingThisWeek.has(team) &&
-        !previouslyUsedTeams.has(team) &&
-        !usedThisWeek.has(team)
+        !previouslyUsedTeams.has(team)
     );
 
     if (availableTeams.length === 0) {
