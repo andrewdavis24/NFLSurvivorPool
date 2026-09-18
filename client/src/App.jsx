@@ -926,44 +926,77 @@ function App() {
               }
             >
               {notificationsEnabled && (
-            <button
-              className="test-notification-button"
-              onClick={async () => {
-                try {
-                  const response =
-                    await fetch(
-                      `${API_URL}/api/push/test`,
-                      {
-                        method: "POST",
-                        headers: {
-                          Authorization: `Bearer ${token}`,
-                        },
+                <button
+                  className="test-notification-button"
+                  onClick={async () => {
+                    setMessage("");
+                    setError("");
+
+                    try {
+                      setMessage(
+                        "Sending test notification..."
+                      );
+
+                      const response =
+                        await fetch(
+                          `${API_URL}/api/push/test`,
+                          {
+                            method: "POST",
+                            headers: {
+                              Authorization: `Bearer ${token}`,
+                              "Content-Type":
+                                "application/json",
+                            },
+                          }
+                        );
+
+                      const text =
+                        await response.text();
+
+                      let data = {};
+
+                      try {
+                        data = JSON.parse(text);
+                      } catch {
+                        data = {
+                          error: text,
+                        };
                       }
-                    );
 
-                  const data =
-                    await response.json();
+                      console.log(
+                        "Push test response:",
+                        response.status,
+                        data
+                      );
 
-                  if (!response.ok) {
-                    throw new Error(
-                      data.error ||
-                        "Failed to send test notification."
-                    );
-                  }
+                      if (!response.ok) {
+                        throw new Error(
+                          data.error ||
+                            `Server returned ${response.status}`
+                        );
+                      }
 
-                  setMessage(
-                    "Test notification sent!"
-                  );
-                } catch (err) {
-                  console.error(err);
+                      setMessage(
+                        "✅ Test notification sent. Check your phone!"
+                      );
+                    } catch (err) {
+                      console.error(
+                        "Push test failed:",
+                        err
+                      );
 
-                  setError(err.message);
-                }
-              }}
-            >
-              🧪 Test Notification
-            </button>
-          )}
+                      setError(
+                        err.message ||
+                          "Failed to send test notification."
+                      );
+
+                      setMessage("");
+                    }
+                  }}
+                >
+                  🧪 Test Notification
+                </button>
+              )}
               {notificationLoading
                 ? "Enabling..."
                 : notificationsEnabled
