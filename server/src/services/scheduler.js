@@ -3,6 +3,9 @@ const { autoAssignPicks } = require("./autoPick");
 const { getNFLGames } = require("./espn");
 const { syncNFLGames } = require("./gameSync");
 const { scoreWeek } = require("./scoring");
+const {
+  processPushReminders,
+} = require("./pushScheduler");
 
 let cachedWeek = null;
 let lastWeekCheck = 0;
@@ -18,6 +21,8 @@ function startScheduler() {
 
       // Keep the current week's games up to date.
       await syncNFLGames(currentWeek);
+      
+      await processPushReminders(currentWeek);
 
       // Score any completed games.
       const scored = await scoreWeek(currentWeek);

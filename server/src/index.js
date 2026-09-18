@@ -9,6 +9,8 @@ const gamesRouter = require("./routes/games");
 const leaderboardRouter = require("./routes/leaderboard");
 const { startScheduler } = require("./services/scheduler");
 const authRouter = require("./routes/auth");
+const pushRouter = require("./routes/push");
+const weeklyPicksRouter = require("./routes/weeklyPicks");
 
 const app = express();
 
@@ -22,6 +24,11 @@ app.use("/api/picks", picksRouter);
 app.use("/api/games", gamesRouter);
 app.use("/api/leaderboard", leaderboardRouter);
 app.use("/api/auth", authRouter);
+app.use("/api/push", pushRouter);
+app.use(
+  "/api/weekly-picks",
+  weeklyPicksRouter
+);
 
 app.get("/", (req, res) => {
   res.json({

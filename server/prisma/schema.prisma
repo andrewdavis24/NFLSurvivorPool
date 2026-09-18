@@ -12,15 +12,18 @@ model User {
   passwordHash String?
   createdAt    DateTime @default(now())
 
-  picks Pick[]
+  picks             Pick[]
+  pushSubscriptions PushSubscription[]
+  pushReminders     PushReminder[]
 }
 
 model Week {
   id   Int @id @default(autoincrement())
   week Int @unique
 
-  picks Pick[]
-  games Game[]
+  picks         Pick[]
+  games         Game[]
+  pushReminders PushReminder[]
 }
 
 model Pick {
@@ -54,4 +57,29 @@ model Game {
   updatedAt DateTime  @updatedAt
 
   week Week @relation(fields: [weekId], references: [id])
+}
+
+model PushSubscription {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  endpoint  String   @unique
+  p256dh    String
+  auth      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model PushReminder {
+  id     Int      @id @default(autoincrement())
+  userId Int
+  weekId Int
+  type   String
+  sentAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  week Week @relation(fields: [weekId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, weekId, type])
 }
