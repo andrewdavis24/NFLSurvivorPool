@@ -34,7 +34,22 @@ async function scoreWeek(week) {
         game.awayTeam === pick.team
     );
 
+    /*
+     * No matching game means we cannot score this pick yet.
+     */
     if (!game) {
+      continue;
+    }
+
+    /*
+     * Do not score a game until ESPN has actually provided
+     * a winner.
+     */
+    if (!game.winner) {
+      console.log(
+        `Skipping Week ${week} pick ${pick.team}: game is completed but winner is not available yet.`
+      );
+
       continue;
     }
 

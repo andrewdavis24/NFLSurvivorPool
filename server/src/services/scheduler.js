@@ -1,11 +1,10 @@
 const cron = require("node-cron");
+
 const { autoAssignPicks } = require("./autoPick");
 const { getNFLGames } = require("./espn");
 const { syncNFLGames } = require("./gameSync");
 const { scoreWeek } = require("./scoring");
-const {
-  processPushReminders,
-} = require("./pushScheduler");
+const { processPushReminders } = require("./pushScheduler");
 
 let cachedWeek = null;
 let lastWeekCheck = 0;
@@ -19,21 +18,62 @@ function startScheduler() {
         return;
       }
 
-      // Keep the current week's games up to date.
+      /*
+       * Always sync the current week.
+       */
       await syncNFLGames(currentWeek);
-      
+
+      /*
+       * IMPORTANT:
+       * Also sync the previous week.
+       *
+       * This prevents a previous week's final game from being
+       * missed if the scheduler advances to the next week before
+       * ESPN's final result was captured.
+       */
+      if (currentWeek > 1) {
+        await syncNFLGames(currentWeek - 1);
+      }
+
+      /*
+       * Score the previous week first.
+       *
+       * scoreWeek() only processes picks where result === null,
+       * so running it repeatedly is safe.
+       */
+      if (currentWeek > 1) {
+        const previousWeekScored =
+          await scoreWeek(currentWeek - 1);
+
+        if (previousWeekScored > 0) {
+          console.log(
+            `Scored ${previousWeekScored} pick(s) for Week ${
+              currentWeek - 1
+            }`
+          );
+        }
+      }
+
+      /*
+       * Process reminders for the current week.
+       */
       await processPushReminders(currentWeek);
 
-      // Score any completed games.
-      const scored = await scoreWeek(currentWeek);
+      /*
+       * Score any completed games in the current week.
+       */
+      const currentWeekScored =
+        await scoreWeek(currentWeek);
 
-      if (scored > 0) {
+      if (currentWeekScored > 0) {
         console.log(
-          `Scored ${scored} pick(s) for Week ${currentWeek}`
+          `Scored ${currentWeekScored} pick(s) for Week ${currentWeek}`
         );
       }
 
-      // Automatically assign picks after the deadline.
+      /*
+       * Automatically assign missing picks after the deadline.
+       */
       try {
         const assignedPicks =
           await autoAssignPicks(currentWeek);
@@ -44,7 +84,6 @@ function startScheduler() {
           );
         }
       } catch (error) {
-        // This is expected before the weekly deadline.
         if (error.message !== "Picks are still open") {
           console.error(
             "Auto-pick error:",
@@ -74,21 +113,28 @@ async function getCurrentNFLWeek() {
   }
 
   for (let week = 1; week <= 18; week++) {
-    const games = await getNFLGames(week);
+    try {
+      const games = await getNFLGames(week);
 
-    if (games.length === 0) {
-      continue;
-    }
+      if (games.length === 0) {
+        continue;
+      }
 
-    const hasUncompletedGames = games.some(
-      (game) => !game.completed
-    );
+      const hasUncompletedGames = games.some(
+        (game) => !game.completed
+      );
 
-    if (hasUncompletedGames) {
-      cachedWeek = week;
-      lastWeekCheck = now;
+      if (hasUncompletedGames) {
+        cachedWeek = week;
+        lastWeekCheck = now;
 
-      return week;
+        return week;
+      }
+    } catch (error) {
+      console.error(
+        `Failed to check NFL Week ${week}:`,
+        error.message
+      );
     }
   }
 
